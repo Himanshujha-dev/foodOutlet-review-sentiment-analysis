@@ -11,12 +11,12 @@ if (!JWT_SECRET) {
 }
 
 const payload = {
-    sub: "assignment-user-001",
+    sub: "user-001",
     name: "Student Tester",
     role: "tester"
 };
 
-// Generate token (valid for 1 hour)
+
 const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
 console.log("=========================================\n");

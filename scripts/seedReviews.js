@@ -42,7 +42,7 @@ const negAdjectives = ["complete", "total", "frustrating", "massive", "unfortuna
 const negRatings = ["terrible", "poor", "unacceptable", "bad", "underwhelming", "horrible"];
 
 function generateReview(subject) {
-    const isPositive = Math.random() > 0.4; // 60% Positive, 40% Negative
+    const isPositive = Math.random() > 0.4; 
     
     const templates = isPositive ? posTemplates : negTemplates;
     const adjs = isPositive ? posAdjectives : negAdjectives;
@@ -62,11 +62,10 @@ function generateReview(subject) {
 async function seedData() {
     try {
         await client.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
-        console.log(`🚀 Table detected. Starting seed: 100 unique reviews into ${TABLE_NAME}...`);
+        console.log(`Table ${TABLE_NAME} detected Starting seed: 100 unique reviews into ${TABLE_NAME}...`);
     } catch (err) {
         if (err.name === 'ResourceNotFoundException') {
             console.error(`ERROR: Table "${TABLE_NAME}" not found in ${REGION}.`);
-            console.log(" ACTION: Deploy your infrastructure first using 'npx serverless deploy'!");
             return;
         }
         throw err;
@@ -97,7 +96,7 @@ async function seedData() {
             process.exit(1);
         }
     }
-    console.log("Seeding complete! 100 varied reviews are now in DynamoDB.");
+    console.log("Seeding complete 100 varied reviews are now in DynamoDB.");
 }
 
 seedData().catch(err => {
