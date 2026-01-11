@@ -102,50 +102,55 @@ The service follows a 3-layer modular architecture to keep responsibilities clea
 
 Create the following parameters in AWS Systems Manager (ap-south-1) as SecureString values:
 
-- /sentiment-analysis/gemini-api-key  
-  Google AI API key
-- /sentiment-analysis/jwt-secret  
-  Secret used for JWT signing
+- /sentiment-analysis/gemini-api-key: Google AI API key
+- /sentiment-analysis/jwt-secret: Secret used for JWT signing
 
 ### 2. Deployment Commands
 
-Setup Logic Layer  
-cd api-op/sentiment-analysis-service && npm install
+- Setup Logic Layer
+  
+  cd api-op/sentiment-analysis-service && npm install
 
-Deploy Serverless Stack  
-cd ../../serverless && npm install  
-serverless deploy
+- Deploy Serverless Stack
+  
+  cd ../../serverless && npm install  
+  serverless deploy
 
-Seed Data and Generate Token  
-cd ../scripts && npm install  
-node seedReviews.js  
-node generateToken.js
+- Seed Data and Generate Token
+  
+  cd ../scripts && npm install  
+  node seedReviews.js  
+  node generateToken.js
 
 ---
 
 ## API Usage & Authentication Flow
 
-Authorization Header  
-Authorization: Bearer `<token>`
+- Authorization Header  
+
+  Authorization: Bearer `<token>`
 
 
-Endpoint  
-POST /review-sentiment
+- Endpoint  
 
-Request Body  
-{ "subject": "Staff behavior" }
+  POST /review-sentiment
 
-Sample Response  
-{
-  "subject": "Staff behavior",
-  "sentimentScore": "64%",
-  "analysisDetails": {
-    "totalAnalyzed": 100,
-    "totalMatched": 25,
-    "positiveCount": 16,
-    "negativeCount": 9
+- Request Body  
+
+  { "subject": "Staff behavior" }
+
+- Sample Response  
+
+  {
+    "subject": "Staff behavior",
+    "sentimentScore": "64%",
+    "analysisDetails": {
+      "totalAnalyzed": 100,
+      "totalMatched": 25,
+      "positiveCount": 16,
+      "negativeCount": 9
+    }
   }
-}
 
 ---
 
