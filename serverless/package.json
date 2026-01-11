@@ -1,0 +1,17 @@
+{
+    "name": "sentiment-analysis-infrastructure",
+    "version": "1.0.0",
+    "description": "Deployment and handlers for the Sentiment Analysis API",
+    "main": "src/handlers/aws/handler.js",
+    "scripts": {
+        "deploy": "sls deploy",
+        "remove": "sls remove"
+    },
+    "dependencies": {
+        "sentiment-analysis-service": "file:../api-op/sentiment-analysis-service",
+        "jsonwebtoken": "^9.0.0"
+    },
+    "devDependencies": {
+        "serverless": "^4.0.0"
+    }
+}

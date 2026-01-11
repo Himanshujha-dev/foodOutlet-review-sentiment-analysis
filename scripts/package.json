@@ -1,0 +1,13 @@
+{
+  "name": "sentiment-analysis-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for seeding data and generating test tokens",
+  "main": "generateToken.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "uuid": "^9.0.0"
+  }
+}

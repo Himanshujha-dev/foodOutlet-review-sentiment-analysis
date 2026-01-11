@@ -1,0 +1,62 @@
+service: sentiment-analysis-api
+
+custom: 
+  REVIEWS_TABLE: ${self:service}-reviews-${self:provider.stage}
+
+provider:
+  name: aws
+  runtime: nodejs24.x
+  architecture: arm64
+  region: ap-south-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 28
+
+  iam:
+    role:
+      statements:
+        # Permission for DynamoDB
+        - Effect: Allow
+          Action: 
+            - "dynamodb:Scan"
+            - "dynamodb:BatchWriteItem"
+          Resource: !GetAtt ReviewsTable.Arn
+        # CRITICAL: Permission for SSM (added for SecretManagerClient)
+        - Effect: Allow
+          Action:
+            - "ssm:GetParameters"
+          Resource: 
+            - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/sentiment-analysis/*"
+
+functions:
+  auth:
+    handler: src/handlers/aws/authorizer.handle
+    environment:
+      JWT_SECRET_NAME: /sentiment-analysis/jwt-secret
+      REGION: ${self:provider.region}
+  
+  analyzeSentiment:
+    handler: src/handlers/aws/handler.handle
+    environment:
+      REVIEWS_TABLE: ${self:custom.REVIEWS_TABLE}
+      REGION: ${self:provider.region}
+      GEMINI_API_KEY_NAME: /sentiment-analysis/gemini-api-key
+    events:
+      - http:
+          path: review-sentiment
+          method: post
+          cors: true
+          authorizer: auth
+
+resources:
+  Resources:
+    ReviewsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.REVIEWS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: reviewId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: reviewId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
