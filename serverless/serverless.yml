@@ -14,13 +14,11 @@ provider:
   iam:
     role:
       statements:
-        # Permission for DynamoDB
         - Effect: Allow
           Action: 
             - "dynamodb:Scan"
             - "dynamodb:BatchWriteItem"
           Resource: !GetAtt ReviewsTable.Arn
-        # CRITICAL: Permission for SSM (added for SecretManagerClient)
         - Effect: Allow
           Action:
             - "ssm:GetParameters"
