@@ -1,112 +1,183 @@
-Serverless Sentiment Analysis Service
-A serverless implementation for real-time sentiment analysis. This service processes 100 raw reviews of food outlets from DynamoDB and uses Gemini AI to calculate subject-specific sentiment scores at runtime.
-The system provides secure JWT-protected endpoints and handles concurrent processing to deliver accurate sentiment percentages and metadata in seconds.
+# Serverless Sentiment Analysis Service
 
-# Architecture Overview
- The service is built using a 3-Layer Modular Design
+A serverless implementation for real-time sentiment analysis.  
+This service processes 100 raw food outlet reviews stored in DynamoDB and uses Gemini AI to calculate subject-based sentiment scores at runtime.
 
-    1. Interface Layer (serverless/):
+The system provides JWT-protected APIs and processes requests efficiently to return sentiment percentages and related metadata within seconds.
 
-        API Gateway: Exposes the REST endpoint and triggers the Authorizer.
+---
 
-        Lambda Authorizer: Validates JWTs against secrets stored in AWS SSM before requests reach the logic.
+## Table of Contents
 
-        Lambda Handler: Orchestrates the hand-off between AWS events and the internal logic package.
+- Architecture Overview  
+- Request Lifecycle & Interaction Flow  
+- Assumptions & Trade-offs  
+- Model Selection  
+- Deployment & Usage  
+- API Usage & Authentication Flow  
+- Monitoring & Logging  
 
-    2. Logic Layer (api-op/):
+---
 
-        Api Processor: Coordinates between data gathering and AI execution.
+## Architecture Overview
 
-        Service Layer: Handles business logic, such as subject validation and batching strategies.
+The service follows a 3-layer modular architecture to keep responsibilities clearly separated.
 
-        Data Access Layer: Clean interfaces for DynamoDB (Reviews) and SSM (Secrets).
+### 1. Interface Layer (serverless/)
 
-        Transformer: Responsible for aggregating Ai batch Results into final percentage-based response.
+- API Gateway  
+  Exposes the REST API endpoint and forwards requests to the Lambda Authorizer.
+
+- Lambda Authorizer  
+  Validates JWT tokens using secrets stored in AWS SSM before allowing access.
+
+- Lambda Handler  
+  Receives authorized requests and passes them to the internal logic layer.
+
+- Authorizer Placement  
+    The JWT Authorizer is implemented inside the serverless layer instead of the core logic package.  
+    This ensures that authentication is handled at API entry point.  
+    Unauthorized requests are blocked early and never reach the business logic in api-op layer.
 
 
-    3. Utility Layer (scripts/):
+---
 
-        Local scripts for seeding the database with test data and generating JWT tokens for authorization.
+### 2. Logic Layer (api-op/)
 
-# Request Lifecycle & Interaction Flow
+- API Processor  
+  Coordinates data retrieval and AI analysis.
 
-    1. Client Request: The user sends a POST request with the target subject to the API Gateway.
+- Service Layer  
+  Contains the core business logic such as subject validation and request handling.
 
-    2. Security Check (Authorizer): A Lambda Authorizer intercepts the request, validates the JWT, and grants or denies access based on the secret in AWS SSM.
+- Data Access Layer  
+  Provides clean access methods for DynamoDB (Reviews table) and AWS SSM (Secrets).
 
-    3. Lambda: The handler triggers the ApiProcessor, which fetches the required AI credentials and initializes the services.
+- Transformer  
+  Converts AI output into a final percentage-based response format.
 
-    4. Data Retrieval (DynamoDB): The ReviewService scans the database to retrieve exactly 100 raw reviews.
+---
 
-    5. AI Batch Analysis: All 100 reviews are sent to the Gemini 2.5 Flash model in a single prompt to identify relevant reviews and determine sentiment.
+### 3. Utility Layer (scripts/)
 
-    6. Transformation: Aggregates the AI results, calculates the positive percentage, and prepares the final metadata.
+- Scripts used for:
+  - Seeding test review data into DynamoDB  
+  - Generating JWT tokens for API authentication  
 
-    7. Final Response: The API returns a structured JSON response with the score and analysis details to the user.  
+---
 
-# Assumptions and Trade-offs 
-    1. Runtime vs. Persistence: The DynamoDB schema is intentionally limited to a single non-key attribute (text). Because of this, I perform analysis at runtime rather than storing pre-calculated scores. This setup demonstrates how LLMs can handle raw, unstructured data on the fly without needing to maintain extra metadata in the database.
+## Request Lifecycle & Interaction Flow
 
-    2. Decoupled Logic: Moving core logic to the api-op directory adds file complexity but allows the code to be tested locally.
+1. Client Request  
+   The client sends a POST request with a target subject to the API Gateway.
 
-    3. Security Latency: Fetching secrets from SSM at runtime adds latency, but this is a necessary trade-off to avoid the security risk of plaintext in environment variables.
+2. Authorization Check  
+   The Lambda Authorizer validates the JWT token using the secret stored in AWS SSM.
 
-# Model Selection
+3. Lambda Execution  
+   After authorization, the Lambda handler invokes the API Processor.
 
-    1. Model: Google Gemini 2.5 Flash.
+4. Data Retrieval  
+   The ReviewService scans DynamoDB and retrieves exactly 100 raw reviews.
 
-    2. Reasoning: I chose Gemini Flash specifically to handle the batch processing of 100 reviews in one go. Its 1-million token context window means we don't have to worry about truncating the review text, and the low latency keeps the execution time well under the 29 Second API Gateway timeout.
+5. AI Sentiment Analysis  
+   All 100 reviews are sent in a single request to the Gemini 2.5 Flash model to identify relevant reviews and their sentiment.
 
-    3. Batching Strategy: While the architecture is designed to support concurrent batching, the service is currently configured to process all 100 reviews in a single AI request. This deliberate choice respects the 15 RPM (Requests Per Minute) free-tier limit while leveraging Gemini's large context window for stability and cost-efficiency.
+6. Result Transformation  
+   The AI response is processed to calculate sentiment percentages and prepare metadata.
 
-    4. Response Handling: To prevent the AI from returning a conversational summary, I enforced a strict JSON schema using responseMimeType: "application/json". The prompt (in model/PromptTemplate.js) is designed to return simple integer counts for positive/negative matches. The code also includes a regex-based sanitizer to strip out any markdown backticks (e.g., ```json) that could crash the JSON.parse() method.
+7. Final Response  
+   A structured JSON response containing sentiment results is returned to the client.
 
-# Deployment & Usage
+---
 
-    1. Manual AWS Setup (SSM)
+## Assumptions & Trade-offs
 
-    Create the following parameters in your AWS Systems Manager (ap-south-1) as SecureString:
+1. Runtime Analysis Instead of Storage  
+   The DynamoDB table stores only raw review text and does not store pre-calculated sentiment data.  
+   Sentiment analysis is performed at runtime to show how AI models can analyze unstructured data directly without relying on stored results.
 
-    /sentiment-analysis/gemini-api-key: Your Google AI Key.
+---
 
-    /sentiment-analysis/jwt-secret: A random string for JWT signing.
+## Model Selection
 
-    2. Deployment Commands
+1. Model Used  
+   Google Gemini 2.5 Flash
 
-    # Setup Logic Layer
-    cd api-op/sentiment-analysis-service && npm install
+2. Reason for Selection  
+   Gemini Flash supports large context sizes, allowing all 100 reviews to be analyzed in a single request without truncation.  
+   Its low response time keeps execution within the API Gateway timeout limit.
 
-    # Deploy to AWS
-    cd ../../serverless && npm install
-    serverless deploy
+3. Batching Approach  
+   All reviews are analyzed in one request to stay within the 15 RPM free-tier limit while keeping results stable and cost-efficient.
 
-    # Seed Data & Generate Token
-    cd ../scripts && npm install
-    node seedReviews.js
-    node generateToken.js
+4. Response Handling  
+   To prevent the AI from returning a conversational summary, I enforced a strict JSON schema using responseMimeType: "application/json". The prompt (in model/PromptTemplate.js) is designed to return simple integer counts for positive/negative matches. The code also includes a regex-based sanitizer to strip out any markdown backticks (e.g., ```json) that could crash the JSON.parse() method.
 
-# API Usage & Authentication Flow       
+---
 
-    Auth: Authorization: Bearer <token>
-    Endpoint: POST /review-sentiment
-    Body: { "subject": "Staff behavior" }
+## Deployment & Usage
 
-    Sample Response:
-    {
-        "subject": "Staff behavior",
-        "sentimentScore": "64%",
-        "analysisDetails": {
-            "totalAnalyzed": 100,
-            "totalMatched": 25,
-            "positiveCount": 16,
-            "negativeCount": 9
-        }
-    }
+### 1. Manual AWS Setup (SSM)
 
-# Monitoring and Logging 
-The service uses Winston for structured logging, integrated with AWS CloudWatch:
+Create the following parameters in AWS Systems Manager (ap-south-1) as SecureString values:
 
-    1. JSON Logging: All logs are emitted as JSON objects. This allows AWS CloudWatch Logs Insights to parse fields automatically.
+- /sentiment-analysis/gemini-api-key — Google AI API key  
+- /sentiment-analysis/jwt-secret — Secret used for JWT signing  
 
-    2. Error Traceability: The utils/Logger.js captures full stack traces for AI failures or DB issues for faster debugging in production.
-        
+---
+
+### 2. Deployment Commands
+
+# Setup Logic Layer
+cd api-op/sentiment-analysis-service
+npm install
+
+# Deploy Serverless Stack
+cd ../../serverless
+npm install
+serverless deploy
+
+# Seed Data & Generate Token
+cd ../scripts
+npm install
+node seedReviews.js
+node generateToken.js
+
+---
+
+## API Usage & Authentication Flow
+
+Authorization Header  
+Authorization: Bearer <token>
+
+Endpoint  
+POST /review-sentiment
+
+Request Body  
+{ "subject": "Staff behavior" }
+
+Sample Response
+
+{
+  "subject": "Staff behavior",
+  "sentimentScore": "64%",
+  "analysisDetails": {
+    "totalAnalyzed": 100,
+    "totalMatched": 25,
+    "positiveCount": 16,
+    "negativeCount": 9
+  }
+}
+
+---
+
+## Monitoring & Logging
+
+The service uses Winston for structured logging and integrates with AWS CloudWatch.
+
+1. Structured Logging  
+Logs are written in JSON format so they can be easily searched using CloudWatch Logs Insights.
+
+2. Error Tracking  
+The custom logger in utils/Logger.js captures full error stack traces to help debug issues in production.
