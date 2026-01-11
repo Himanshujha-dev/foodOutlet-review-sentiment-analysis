@@ -1,4 +1,5 @@
 Serverless Sentiment Analysis Service
+
 A serverless implementation for real-time sentiment analysis. This service processes 100 raw reviews of food outlets from DynamoDB and uses Gemini AI to calculate subject-specific sentiment scores at runtime.
 The system provides secure JWT-protected endpoints and handles concurrent processing to deliver accurate sentiment percentages and metadata in seconds.
 
