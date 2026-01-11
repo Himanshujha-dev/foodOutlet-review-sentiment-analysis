@@ -126,7 +126,8 @@ node generateToken.js
 ## API Usage & Authentication Flow
 
 Authorization Header  
-Authorization: Bearer <token>
+Authorization: Bearer `<token>`
+
 
 Endpoint  
 POST /review-sentiment
